@@ -13,7 +13,7 @@
 typedef struct{ 
     char tipo;
     int tamanho;
-}Token; // Ex: Descritor "ius10" possui 3 tokens: int, unsigned int e string de 10 chars
+}Token; // Ex: Descritor "ius10" possui 3 tokens: int, unsigned int e string de 10 char
 
 void escrever_big_endian(FILE *arquivo, unsigned int valor, int nbytes) {
     // Ex: Valor 0x12345678, 4 nbytes, se escreve primeiro 0x12
