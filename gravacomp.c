@@ -37,6 +37,8 @@ unsigned int ler_big_endian(FILE* arquivo, int nbytes) {
     return valor;
 }
 
+
+
 int gravacomp(int nstructs, void* valores, char* descritor, FILE* arquivo) {
     int len = strlen(descritor);
     Token tokens[MAX_TOKENS];
@@ -68,10 +70,59 @@ int gravacomp(int nstructs, void* valores, char* descritor, FILE* arquivo) {
     
     // Escreve o número de structs no primeiro byte do arquivo
     fputc((unsigned char)nstructs, arquivo);
+  
+    // Percorre as structs e grava cada campo de acordo com o descrito
+    //testando para 1 struct
+    //transformando o tipo da struct
+    unsigned char* base = (unsigned char*)valores;
+    int offset = 0;
+    base+=4;//avançando 4 byts, pois a string é o segundo elemento. foi usado apenas para teste
+    for (int j = 0; j < numTokens; j++) {
+        if (tokens[j].tipo == 's') {
+            //escrevendo o cabeçalho
+            unsigned char temp = 0;
+            int tamanho = tokens[j].tamanho;
+            //confere se é o ultimo elemento da struct
+            if(numTokens ==j){
+              temp = temp | (1 << 7);
+            }
+            //ligando o bit 6
+            temp = temp | (1 << 6);
+            //ligando os bit(5-0) de acordo com o tamanho da string
+            for (int i = 0; i < tamanho; i++) {
+              temp = temp | (1 << (5 - i));  // Ligar os bits de 5 a 0 conforme o tamanho
+            }
+            //add o cabeçalho no arquivo
+            fputc(temp, arquivo);
+            printf("imprimindo o byte cabeçalho\n");
+            unsigned char a = temp;
+            for (int b = 7; b >= 0; b--) {
+                    printf("%d", (a >> b) & 1);
+                }
+            printf("\n");
+            
+            
+            printf("Campo string (tamanho %d) em bits:\n", tamanho);
+            for (int i = 0; i < tamanho; i++) {
+                unsigned char c = base[offset + i];  // acessa diretamente a posição correta
+                fputc(c, arquivo);
+                for (int b = 7; b >= 0; b--) {
+                    printf("%d", (c >> b) & 1);
+                }
+                printf(" ");
+            }
+            offset += tamanho;  // avança o offset manualmente
+            printf("\n");
+        }
+        // se tiver outros tipos depois, você soma ao offset o tamanho correspondente também
+    }
+
     
-    // Percorre as structs e grava cada campo de acordo com o descritor
+    
     /*
     for (int i = 0; i < nstructs; i++) {
+      
+    
     }
     */
 
