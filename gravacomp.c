@@ -37,7 +37,31 @@ unsigned int ler_big_endian(FILE* arquivo, int nbytes) {
     return valor;
 }
 
-
+int qnt_de_bytes(int valor, int is_unsigned) {
+    // Determina quantos bytes vão ser gravados no arquivo
+    int ret;
+    if (is_unsigned) {
+        unsigned int uvalor = (unsigned int) valor;
+        if (uvalor <= 0xFF) // Até o 255
+            ret = 1;
+        else if (uvalor <= 0xFFFF) // Até 2^16
+            ret = 2;
+        else if (uvalor <= 0xFFFFFF) // Até 2^32
+            ret = 3;
+        else // Até 2^64
+            ret = 4;
+    } else { // Se signed
+        if (valor >= -128 && valor <= 127)
+            ret = 1;
+        else if (valor >= -32768 && valor <= 32767)
+            ret = 2;
+        else if (valor >= -8388608 && valor <= 8388607)
+            ret = 3;
+        else
+            ret = 4;
+    }
+    return ret;
+}
 
 int gravacomp(int nstructs, void* valores, char* descritor, FILE* arquivo) {
     int len = strlen(descritor);
@@ -58,74 +82,47 @@ int gravacomp(int nstructs, void* valores, char* descritor, FILE* arquivo) {
         }
     }
     
-    // Printa resultado
-    printf("Resultado:\n");
-    for (int i = 0; i < numTokens; i++) {
-        if (tokens[i].tipo == 's') {
-            printf("Campo %d: tipo %c, tamanho = %d\n", i, tokens[i].tipo, tokens[i].tamanho);
-        } else {
-            printf("Campo %d: tipo %c\n", i, tokens[i].tipo);
-        }
-    }
-    
     // Escreve o número de structs no primeiro byte do arquivo
     fputc((unsigned char)nstructs, arquivo);
   
-    // Percorre as structs e grava cada campo de acordo com o descrito
-    //testando para 1 struct
-    //transformando o tipo da struct
-    unsigned char* base = (unsigned char*)valores;
-    int offset = 0;
-    base+=4;//avançando 4 byts, pois a string é o segundo elemento. foi usado apenas para teste
-    for (int j = 0; j < numTokens; j++) {
-        if (tokens[j].tipo == 's') {
-            //escrevendo o cabeçalho
-            unsigned char temp = 0;
-            int tamanho = tokens[j].tamanho;
-            //confere se é o ultimo elemento da struct
-            if(numTokens ==j){
-              temp = temp | (1 << 7);
-            }
-            //ligando o bit 6
-            temp = temp | (1 << 6);
-            //ligando os bit(5-0) de acordo com o tamanho da string
-            for (int i = 0; i < tamanho; i++) {
-              temp = temp | (1 << (5 - i));  // Ligar os bits de 5 a 0 conforme o tamanho
-            }
-            //add o cabeçalho no arquivo
-            fputc(temp, arquivo);
-            printf("imprimindo o byte cabeçalho\n");
-            unsigned char a = temp;
-            for (int b = 7; b >= 0; b--) {
-                    printf("%d", (a >> b) & 1);
-                }
-            printf("\n");
-            
-            
-            printf("Campo string (tamanho %d) em bits:\n", tamanho);
-            for (int i = 0; i < tamanho; i++) {
-                unsigned char c = base[offset + i];  // acessa diretamente a posição correta
-                fputc(c, arquivo);
-                for (int b = 7; b >= 0; b--) {
-                    printf("%d", (c >> b) & 1);
-                }
-                printf(" ");
-            }
-            offset += tamanho;  // avança o offset manualmente
-            printf("\n");
-        }
-        // se tiver outros tipos depois, você soma ao offset o tamanho correspondente também
-    }
-
-    
-    
-    /*
+    // Percorre as structs e grava cada campo de acordo com o descritor
+    unsigned char* base = (unsigned char*)valores; // Ponteiro base pra percorrer memória do vetor valores
     for (int i = 0; i < nstructs; i++) {
-      
-    
+        for (int j = 0; j < numTokens; j++) {
+            if (tokens[j].tipo == 's') {
+                char* str = (char*) base;
+                int len = strlen(str);
+                unsigned char cabecalho = 0;
+                if (j == numTokens - 1) // É o último campo?
+                    cabecalho = cabecalho | (1 << 7); // Se sim, coloca 1 no bit 7 do cabeçalho
+                cabecalho = cabecalho | (1 << 6); // Coloca 1 no bit 6
+                for (int k = 0; k < tokens[j].tamanho; k++) {
+                    cabecalho = cabecalho | (1 << (5 - k)); // Liga os bits de 5 a 0 conforme o tamanho
+                }
+                fputc(cabecalho, arquivo);
+                fwrite(str, 1, len, arquivo);
+                base += tokens[j].tamanho; // Avança o ponteiro respeitando o array original
+            }
+            else if (tokens[j].tipo == 'i' || tokens[j].tipo == 'u') {
+                unsigned int val = 0;
+                memcpy(&val, base, sizeof(int)); // Copia os dados de base para val
+                int nbytes = qnt_de_bytes(val, tokens[j].tipo == 'i'); // Calcula o número de bytes necessários para armazenar o valor de val
+                unsigned char cabecalho = 0;
+                if (j == numTokens - 1)
+                    cabecalho = cabecalho | (1 << 7);
+                if (tokens[j].tipo == 'i')
+                    cabecalho = cabecalho | (1 << 5); // 01 para signed
+                if (tokens[j].tipo == 'u')
+                    cabecalho = cabecalho | (0 << 5); // 00 para unsigned
+                for (int k = 0; k < 5; k++) {
+                    cabecalho = cabecalho | ((nbytes & (1 << k)) << (k)); // Liga os bits de 4 a 0 conforme nbytes
+                }
+                fputc(cabecalho, arquivo);
+                escrever_big_endian(arquivo, val, nbytes);
+                base += sizeof(int); // Aqui tem que pular 4 bytes
+            }
+        }
     }
-    */
-
     return 0;
 }
 
