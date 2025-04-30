@@ -37,29 +37,32 @@ unsigned int ler_big_endian(FILE* arquivo, int nbytes) {
     return valor;
 }
 
-int qnt_de_bytes(int valor, int is_unsigned) {
+int qnt_de_bytes_unsigned(int valor) { // Caso Unsigned
     // Determina quantos bytes vão ser gravados no arquivo
     int ret;
-    if (is_unsigned) {
-        unsigned int uvalor = (unsigned int) valor;
-        if (uvalor <= 0xFF) // Até o 255
-            ret = 1;
-        else if (uvalor <= 0xFFFF) // Até 2^16
-            ret = 2;
-        else if (uvalor <= 0xFFFFFF) // Até 2^32
-            ret = 3;
-        else // Até 2^64
-            ret = 4;
-    } else { // Se signed
-        if (valor >= -128 && valor <= 127)
-            ret = 1;
-        else if (valor >= -32768 && valor <= 32767)
-            ret = 2;
-        else if (valor >= -8388608 && valor <= 8388607)
-            ret = 3;
-        else
-            ret = 4;
-    }
+    unsigned int uvalor = (unsigned int) valor;
+    if (uvalor <= 0xFF) // Até o 255
+        ret = 1;
+    else if (uvalor <= 0xFFFF) // Até 2^16
+        ret = 2;
+    else if (uvalor <= 0xFFFFFF) // Até 2^32
+        ret = 3;
+    else // Até 2^64
+        ret = 4;
+    return ret;
+}
+
+int qnt_de_bytes_signed(int valor) { // Caso Signed
+    // Determina quantos bytes vão ser gravados no arquivo
+    int ret;
+    if (valor >= -128 && valor <= 127)
+        ret = 1;
+    else if (valor >= -32768 && valor <= 32767)
+        ret = 2;
+    else if (valor >= -8388608 && valor <= 8388607)
+        ret = 3;
+    else
+        ret = 4;
     return ret;
 }
 
@@ -87,18 +90,22 @@ int gravacomp(int nstructs, void* valores, char* descritor, FILE* arquivo) {
   
     // Percorre as structs e grava cada campo de acordo com o descritor
     unsigned char* base = (unsigned char*)valores; // Ponteiro base pra percorrer memória do vetor valores
+    
     for (int i = 0; i < nstructs; i++) {
         for (int j = 0; j < numTokens; j++) {
+            int ultimo_token = (j == numTokens - 1);
             if (tokens[j].tipo == 's') {
                 char* str = (char*) base;
                 int len = strlen(str);
+                if (len > 63)
+                    len = 63;
+                
                 unsigned char cabecalho = 0;
-                if (j == numTokens - 1) // É o último campo?
+                if (ultimo_token)
                     cabecalho = cabecalho | (1 << 7); // Se sim, coloca 1 no bit 7 do cabeçalho
-                cabecalho = cabecalho | (1 << 6); // Coloca 1 no bit 6
-                for (int k = 0; k < tokens[j].tamanho; k++) {
-                    cabecalho = cabecalho | (1 << (5 - k)); // Liga os bits de 5 a 0 conforme o tamanho
-                }
+                cabecalho = cabecalho | (1 << 6); // Tipo = string
+                cabecalho = cabecalho | (len & 0x3F); // Len limitado a 6 bits, usando máscara de 6 bits (00111111). Tamanho até 63
+                
                 fputc(cabecalho, arquivo);
                 fwrite(str, 1, len, arquivo);
                 base += tokens[j].tamanho; // Avança o ponteiro respeitando o array original
@@ -106,7 +113,11 @@ int gravacomp(int nstructs, void* valores, char* descritor, FILE* arquivo) {
             else if (tokens[j].tipo == 'i' || tokens[j].tipo == 'u') {
                 unsigned int val = 0;
                 memcpy(&val, base, sizeof(int)); // Copia os dados de base para val
-                int nbytes = qnt_de_bytes(val, tokens[j].tipo == 'i'); // Calcula o número de bytes necessários para armazenar o valor de val
+                int nbytes = 0;
+                if (tokens[j].tipo == 'i')
+                    nbytes = qnt_de_bytes_signed(val); // bytes necessários para armazenar o valor de val
+                else
+                    nbytes = qnt_de_bytes_unsigned(val);
                 unsigned char cabecalho = 0;
                 if (j == numTokens - 1)
                     cabecalho = cabecalho | (1 << 7);
@@ -114,9 +125,7 @@ int gravacomp(int nstructs, void* valores, char* descritor, FILE* arquivo) {
                     cabecalho = cabecalho | (1 << 5); // 01 para signed
                 if (tokens[j].tipo == 'u')
                     cabecalho = cabecalho | (0 << 5); // 00 para unsigned
-                for (int k = 0; k < 5; k++) {
-                    cabecalho = cabecalho | ((nbytes & (1 << k)) << (k)); // Liga os bits de 4 a 0 conforme nbytes
-                }
+                cabecalho |= (nbytes & 0x1F); // Nbytes limitado a 5 bits. (00011111)
                 fputc(cabecalho, arquivo);
                 escrever_big_endian(arquivo, val, nbytes);
                 base += sizeof(int); // Aqui tem que pular 4 bytes
