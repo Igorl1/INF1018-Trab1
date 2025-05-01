@@ -1,5 +1,5 @@
 /* Igor Soares Lemos 2011287 3WC */
-/* Nome_do_Aluno2 Matricula Turma */
+/* Bruno Kubudi Cardeman 2132924 3WC */
 
 #include <stdio.h>
 #include <stdlib.h>
