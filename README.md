@@ -13,4 +13,4 @@ O objetivo do trabalho é implementar, na linguagem C, uma função (gravacomp) 
 
 ### 3) Integrantes do Grupo:
   - Igor Soares Lemos
-  - 
+  - Bruno Kubudi Cardeman
