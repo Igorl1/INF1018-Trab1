@@ -66,6 +66,51 @@ int qnt_de_bytes_signed(int valor) { // Caso Signed
     return ret;
 }
 
+size_t align_to(size_t offset, size_t align) {
+    return (offset + (align - 1)) & ~(align - 1);
+}
+
+// Função que separa o padding entre campos
+void calc_paddings_from_descriptor(const char *descriptor, size_t paddings[], int *num_campos) {
+    size_t offset = 0;
+    int idx = 0;
+
+    for (size_t i = 1; i < strlen(descriptor); ) {
+        char type = descriptor[i];
+        size_t size = 0, align = 0;
+
+        if (type == 'i' || type == 'u') {
+            size = 4;
+            align = 4;
+            i += 1;
+        } else if (type == 's') {
+            if (isdigit(descriptor[i + 1]) && isdigit(descriptor[i + 2])) {
+                int len = (descriptor[i + 1] - '0') * 10 + (descriptor[i + 2] - '0');
+                size = len;
+                align = 1;
+                i += 3;
+            } else {
+                fprintf(stderr, "Erro: descritor de string malformado em %zu\n", i);
+                exit(1);
+            }
+        } else {
+            fprintf(stderr, "Erro: tipo desconhecido '%c'\n", type);
+            exit(1);
+        }
+
+        size_t aligned_offset = align_to(offset, align);
+        paddings[idx++] = aligned_offset - offset;
+        offset = aligned_offset + size;
+    }
+
+    // Padding final (fim da struct)
+    size_t final_align = 4; // alinhamento da struct
+    size_t final_size = align_to(offset, final_align);
+    paddings[idx++] = final_size - offset;
+
+    *num_campos = idx;
+}
+
 int gravacomp(int nstructs, void* valores, char* descritor, FILE* arquivo) {
     int len = strlen(descritor);
     Token tokens[MAX_TOKENS];
@@ -91,6 +136,10 @@ int gravacomp(int nstructs, void* valores, char* descritor, FILE* arquivo) {
     // Percorre as structs e grava cada campo de acordo com o descritor
     unsigned char* base = (unsigned char*)valores; // Ponteiro base pra percorrer memória do vetor valores
     
+    size_t paddings[MAX_TOKENS];
+    
+    int n;
+    calc_paddings_from_descriptor(descritor, paddings, &n);
     for (int i = 0; i < nstructs; i++) {
         for (int j = 0; j < numTokens; j++) {
             int ultimo_token = (j == numTokens - 1);
@@ -116,10 +165,10 @@ int gravacomp(int nstructs, void* valores, char* descritor, FILE* arquivo) {
                 int nbytes = 0;
                 if (tokens[j].tipo == 'i')
                     nbytes = qnt_de_bytes_signed(val); // bytes necessários para armazenar o valor de val
-                else
+                else if (tokens[j].tipo == 'u')
                     nbytes = qnt_de_bytes_unsigned(val);
                 unsigned char cabecalho = 0;
-                if (j == numTokens - 1)
+                if (ultimo_token)
                     cabecalho = cabecalho | (1 << 7);
                 if (tokens[j].tipo == 'i')
                     cabecalho = cabecalho | (1 << 5); // 01 para signed
@@ -130,6 +179,7 @@ int gravacomp(int nstructs, void* valores, char* descritor, FILE* arquivo) {
                 escrever_big_endian(arquivo, val, nbytes);
                 base += sizeof(int); // Aqui tem que pular 4 bytes
             }
+            base += paddings[j];
         }
     }
     return 0;
