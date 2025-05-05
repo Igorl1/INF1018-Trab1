@@ -1,2 +1,14 @@
-/* Nome_do_Aluno1 Matricula Turma */
-/* Nome_do_Aluno2 Matricula Turma */
+/* Igor Soares Lemos 2011287 3WC */
+/* Bruno Kubudi Cardeman 2132924 3WC */
+
+Relatório INF1018 - T1
+
+Análise de Funções
+
+1 - Função escrever_big_endian(FILE *arquivo, unsigned int valor, int nbytes): Escreve um número inteiro 'valor' em uma ordem de bytes Big Endian, ou seja, do byte mais significativo para o menos significativo. Um loop percorre os bytes do mais significativo (na esquerda) para o menos significativo. A cada iteração, o byte desejado é isolado com >> e uma máscara & 0xFF. Esse byte desejado é escrito com fputc. Exemplo: Valor 0x12345678, 4 nbytes, se escreve primeiro 0x12.
+
+2 - Função ler_big_endian(FILE *arquivo, int nbytes): Lê nbytes do arquivo e os junta em um inteiro, assumindo que os dados estão armazenados em Big Endian. Inicializa um inteiro valor em zero. Para cada byte lido, desloca valor 8 bits para a esquerda e incorpora o byte lido com |. Exemplo: Se tiver 0x12 0x34 0x56 0x78 no arquivo, retorna 0x12345678.
+
+3 - Funções qnt_de_bytes_signed(int valor) e qnt_de_bytes_unsigned(int valor): Determinam o mínimo número de bytes necessário para representar um valor, a fim de reduzir o tamanho do arquivo compactado pro mínimo necesário. No caso de unsigned, a função compara o valor com os limites máximos que podem ser representados com 1, 2, 3 ou 4 bytes (como 0xFF, 0xFFFF, etc). Para signed é parecido, a função avalia se o valor está dentro dos intervalos que podem ser representados com 1, 2, 3 ou 4 bytes (como -128 a 127, -32.768 a 32.767, etc).
+
+4 - Função gravacomp(int nstructs, void* valores, char* descritor, FILE* arquivo): Escreve no arquivo um vetor de structs de forma compactada, começando pelo número total de structs. Para cada campo de cada struct, ela gera um cabeçalho de 1 byte que codifica se é o último campo, o tipo (string ou inteiro) e, conforme o caso, o comprimento da string ou a quantidade mínima de bytes necessária para representar o inteiro. Campos do tipo string têm o texto gravado diretamente após o cabeçalho, enquanto inteiros são gravados em Big Endian com o número de bytes adequado. Após cada campo, a função respeita o padding necessário para manter o alinhamento original da struct.
