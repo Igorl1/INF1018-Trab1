@@ -1,9 +1,16 @@
 /* Igor Soares Lemos 2011287 3WC */
 /* Bruno Kubudi Cardeman 2132924 3WC */
 
-Relatório INF1018 - T1
+RELATÓRIO FINAL - INF1018 - T1
 
-Análise de Funções
+
+> Testes Realizados:
+
+Em nosso trabalho, realizamos diversos testes e debugs, a fim de verificar a funcionalidade das funções gravacomp e mostracomp. Inicialmente, optamos por utilizar o próprio exemplo do enunciado do trabalho, o qual mencionava uma struct s {int i; char s1[5]; unsigned int u;}; e um array com duas estruturas desse tipo. Os campos da primeira estrutura continham os valores -1, "abc" e 258 e os da segunda os valores 1, "ABCD" e 65535. O conteúdo armazenado para esse array (com os valores dos bytes exibidos em hexadecimal) foi, assim como previsto pelo enunciado, 02 21 ff 43 61 62 63 82 01 02 21 01 44 41 42 43 44 82 ff ff. Conseguimos esse valor usando "hexdump -C saida.bin", em que saida.bin foi o arquivo gerado pelo executável.
+Após esse teste inicial, tratamos de vários outros casos, como valores extremos para signed e unsigned, strings com tamanhos máximos e mínimos, diferentes ordens de campos no descritor, etc. Concluímos que o programa está funcional, visto que o resultado sempre foi o esperado.
+
+
+> Análise das Funções (A fim de documentação e referência futura):
 
 1 - Função escrever_big_endian(FILE *arquivo, unsigned int valor, int nbytes): Escreve um número inteiro 'valor' em uma ordem de bytes Big Endian, ou seja, do byte mais significativo para o menos significativo. Um loop percorre os bytes do mais significativo (na esquerda) para o menos significativo. A cada iteração, o byte desejado é isolado com >> e uma máscara & 0xFF. Esse byte desejado é escrito com fputc. Exemplo: Valor 0x12345678, 4 nbytes, se escreve primeiro 0x12.
 
